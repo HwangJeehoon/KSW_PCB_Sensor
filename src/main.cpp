@@ -150,6 +150,7 @@ void setup() {
     // Loadcell: differential, gain x128, 2000 SPS turbo
     ADS1220::Config lc_base;
     lc_base.gain      = ADS1220::Gain::X128;
+    lc_base.vref      = ADS1220::Vref::EXT_REF0;
     lc_base.dr        = ADS1220::DataRate::DR6;
     lc_base.op_mode   = ADS1220::OpMode::TURBO;
     lc_base.conv_mode = ADS1220::ConvMode::SINGLE_SHOT;
