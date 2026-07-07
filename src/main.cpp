@@ -2,7 +2,7 @@
 #include <SPI.h>
 #include "ads1220.hpp"
 
-#define DEBUG_TEXT 0  // 0 = 25-byte 바이너리 (t_us 포함, logger_ts.py 용)
+#define DEBUG_TEXT 1  // 0 = 25-byte 바이너리 (t_us 포함, logger_ts.py 용)
                       // 1 = 텍스트 디버그 출력
                       // 2 = 21-byte 바이너리 (t_us 없음, 기존 logger.py 호환)
 
