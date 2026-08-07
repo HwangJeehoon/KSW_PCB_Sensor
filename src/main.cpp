@@ -2,15 +2,19 @@
 #include <SPI.h>
 #include "ads1220.hpp"
 
-#define DEBUG_TEXT 1  // 0 = 25-byte 바이너리 (t_us 포함, logger_ts.py 용)
+#define DEBUG_TEXT 0  // 0 = 25-byte 바이너리 (t_us 포함, logger_ts.py 용)
                       // 1 = 텍스트 디버그 출력
                       // 2 = 21-byte 바이너리 (t_us 없음, 기존 logger.py 호환)
 
 // ==================== Pin Assignment =======================
-static const uint8_t PIN_CS_ENC   = 5;
-static const uint8_t PIN_CS_LC    = 7;
-static const uint8_t PIN_DRDY_ENC = 4;
-static const uint8_t PIN_DRDY_LC  = 6;
+// static const uint8_t PIN_CS_ENC   = 5;
+// static const uint8_t PIN_CS_LC    = 7;
+// static const uint8_t PIN_DRDY_ENC = 4;
+// static const uint8_t PIN_DRDY_LC  = 6;
+static const uint8_t PIN_CS_ENC   = 9; //PCB pin setup
+static const uint8_t PIN_CS_LC    = 10;
+static const uint8_t PIN_DRDY_ENC = 2;
+static const uint8_t PIN_DRDY_LC  = 3;
 
 // ====================== ADC Objects ========================
 ADS1220 adc_enc(PIN_CS_ENC, PIN_DRDY_ENC);
