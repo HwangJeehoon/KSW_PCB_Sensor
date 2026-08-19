@@ -6,6 +6,8 @@
                       // 1 = 텍스트 디버그 출력
                       // 2 = 21-byte 바이너리 (t_us 없음, 기존 logger.py 호환)
 
+#define GAIN_SANITY_CHECK 1  // 1 = setup()에서 CONFIG0 readback으로 gain 검증 텍스트 출력
+
 // ==================== Pin Assignment =======================
 // static const uint8_t PIN_CS_ENC   = 5;
 // static const uint8_t PIN_CS_LC    = 7;
@@ -130,6 +132,35 @@ static void sendDebugFrame(uint32_t t_us, uint16_t seq,
     Serial.print(" hz=");   Serial.println(hz, 1);
 }
 
+#if GAIN_SANITY_CHECK
+// Gain enum(X1..X128)은 2^n 값이므로 그대로 시프트하면 배율이 나온다.
+static uint16_t gainMultiplier(ADS1220::Gain g) {
+    return static_cast<uint16_t>(1u << static_cast<uint8_t>(g));
+}
+
+// cfg를 적용한 뒤 CONFIG0를 다시 읽어와 실제로 들어간 gain을 확인/출력한다.
+// (readConfig는 applyConfig 직후 상태를 그대로 읽으므로, 이 호출 자체가
+//  이후 conversion에 쓰일 레지스터 상태를 만든다는 점에 유의)
+static void checkGain(const char* label, ADS1220& adc, const ADS1220::Config& cfg) {
+    adc.applyConfig(cfg);
+
+    ADS1220::Config readback;
+    adc.readConfig(readback);
+
+    const uint16_t expected_gain = gainMultiplier(cfg.gain);
+    const uint16_t actual_gain   = gainMultiplier(readback.gain);
+    const bool match = (readback.gain == cfg.gain);
+
+    Serial.print(F("[GAIN CHECK] "));
+    Serial.print(label);
+    Serial.print(F(": expected=x"));
+    Serial.print(expected_gain);
+    Serial.print(F(" actual=x"));
+    Serial.print(actual_gain);
+    Serial.println(match ? F(" OK") : F(" MISMATCH!"));
+}
+#endif
+
 // ======================= Arduino ===========================
 void setup() {
     Serial.begin(230400);
@@ -160,6 +191,15 @@ void setup() {
     lc_base.conv_mode = ADS1220::ConvMode::SINGLE_SHOT;
     lc_cfgs[0] = lc_base;  lc_cfgs[0].mux = ADS1220::Mux::DIFF_AIN0_AIN1;
     lc_cfgs[1] = lc_base;  lc_cfgs[1].mux = ADS1220::Mux::DIFF_AIN2_AIN3;
+
+#if GAIN_SANITY_CHECK
+    // 각 채널 config를 실제로 적용한 뒤 CONFIG0을 readback하여 gain이
+    // 의도한 값(enc=x1, lc=x128)으로 들어갔는지 부팅 시 1회 확인한다.
+    checkGain("ENC0", adc_enc, enc_cfgs[0]);
+    checkGain("ENC1", adc_enc, enc_cfgs[1]);
+    checkGain("LC0",  adc_lc,  lc_cfgs[0]);
+    checkGain("LC1",  adc_lc,  lc_cfgs[1]);
+#endif
 
     enc_ch = 0;
     lc_ch  = 0;
