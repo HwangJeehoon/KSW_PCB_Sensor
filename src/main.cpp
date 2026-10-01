@@ -2,7 +2,7 @@
 #include <SPI.h>
 #include "ads1220.hpp"
 
-#define DEBUG_TEXT 0  // 0 = 25-byte 바이너리 (t_us 포함, logger_ts.py 용)
+#define DEBUG_TEXT 1  // 0 = 25-byte 바이너리 (t_us 포함, logger_ts.py 용)
                       // 1 = 텍스트 디버그 출력
                       // 2 = 21-byte 바이너리 (t_us 없음, 기존 logger.py 호환)
 
@@ -141,8 +141,13 @@ static uint16_t gainMultiplier(ADS1220::Gain g) {
 // cfg를 적용한 뒤 CONFIG0를 다시 읽어와 실제로 들어간 gain을 확인/출력한다.
 // (readConfig는 applyConfig 직후 상태를 그대로 읽으므로, 이 호출 자체가
 //  이후 conversion에 쓰일 레지스터 상태를 만든다는 점에 유의)
+// gain뿐 아니라 raw CONFIG0 hex / mux / pga_bypass도 같이 찍어서,
+// gain MISMATCH가 "레지스터 전체가 0xFF로 읽히는" 배선/미응답 문제인지
+// (그 경우 mux도 reserved값 0b1111로 같이 깨져 나옴) 구분할 수 있게 한다.
 static void checkGain(const char* label, ADS1220& adc, const ADS1220::Config& cfg) {
     adc.applyConfig(cfg);
+
+    const uint8_t raw0 = adc.readRegister(ADS1220::Reg::CONFIG0);
 
     ADS1220::Config readback;
     adc.readConfig(readback);
@@ -153,9 +158,16 @@ static void checkGain(const char* label, ADS1220& adc, const ADS1220::Config& cf
 
     Serial.print(F("[GAIN CHECK] "));
     Serial.print(label);
-    Serial.print(F(": expected=x"));
+    Serial.print(F(": CONFIG0=0x"));
+    if (raw0 < 0x10) Serial.print('0');
+    Serial.print(raw0, HEX);
+    Serial.print(F(" mux=0b"));
+    Serial.print(static_cast<uint8_t>(readback.mux), BIN);
+    Serial.print(F(" bypass="));
+    Serial.print(static_cast<uint8_t>(readback.pga_bypass));
+    Serial.print(F(" expected_gain=x"));
     Serial.print(expected_gain);
-    Serial.print(F(" actual=x"));
+    Serial.print(F(" actual_gain=x"));
     Serial.print(actual_gain);
     Serial.println(match ? F(" OK") : F(" MISMATCH!"));
 }
@@ -189,8 +201,8 @@ void setup() {
     lc_base.dr        = ADS1220::DataRate::DR6;
     lc_base.op_mode   = ADS1220::OpMode::TURBO;
     lc_base.conv_mode = ADS1220::ConvMode::SINGLE_SHOT;
-    lc_cfgs[0] = lc_base;  lc_cfgs[0].mux = ADS1220::Mux::DIFF_AIN0_AIN1;
-    lc_cfgs[1] = lc_base;  lc_cfgs[1].mux = ADS1220::Mux::DIFF_AIN2_AIN3;
+    lc_cfgs[0] = lc_base;  lc_cfgs[0].mux = ADS1220::Mux::DIFF_AIN1_AIN0;
+    lc_cfgs[1] = lc_base;  lc_cfgs[1].mux = ADS1220::Mux::DIFF_AIN3_AIN2;
 
 #if GAIN_SANITY_CHECK
     // 각 채널 config를 실제로 적용한 뒤 CONFIG0을 readback하여 gain이
